@@ -179,7 +179,7 @@ kubeadm 是官方社区推出的一个用于快速部署kubernetes 集群的工�
 
 #### 2.6 环境初始化
 
-##### 2.6.1 检查操作系统的版本
+##### 2.6.1 检查操作系统的版本(三台都做)
 
 ```powershell
 # 此方式下安装kubernetes集群要求Centos版本要在7.5或之上
@@ -187,7 +187,7 @@ kubeadm 是官方社区推出的一个用于快速部署kubernetes 集群的工�
 Centos Linux 7.5.1804 (Core)
 ```
 
-##### 2.6.2 主机名解析
+##### 2.6.2 主机名解析(三台都做)
 
 为了方便集群节点间的直接调用，在这个配置一下主机名解析，企业中推荐使用内部DNS服务器
 
@@ -198,7 +198,7 @@ Centos Linux 7.5.1804 (Core)
 192.168.90.107 node2
 ```
 
-##### 2.6.3 时间同步
+##### 2.6.3 时间同步(三台都做)
 
 kubernetes要求集群中的节点时间必须精确一直，这里使用chronyd服务从网络同步时间
 
@@ -211,7 +211,7 @@ kubernetes要求集群中的节点时间必须精确一直，这里使用chronyd
 [root@master ~]# date
 ```
 
-##### 2.6.4  禁用iptable和firewalld服务
+##### 2.6.4  禁用iptable和firewalld服务(三台都做)
 
 kubernetes和docker 在运行的中会产生大量的iptables规则，为了不让系统规则跟它们混淆，直接关闭系统的规则
 
@@ -224,7 +224,7 @@ kubernetes和docker 在运行的中会产生大量的iptables规则，为了不�
 [root@master ~]# systemctl disable iptables
 ```
 
-##### 2.6.5 禁用selinux
+##### 2.6.5 禁用selinux(三台都做)
 
 selinux是linux系统下的一个安全服务，如果不关闭它，在安装集群中会产生各种各样的奇葩问题
 
@@ -234,7 +234,7 @@ selinux是linux系统下的一个安全服务，如果不关闭它，在安装�
 SELINUX=disabled
 ```
 
-##### 2.6.6 禁用swap分区
+##### 2.6.6 禁用swap分区(三台都做)
 
 swap分区指的是虚拟内存分区，它的作用是物理内存使用完，之后将磁盘空间虚拟成内存来使用，启用swap设备会对系统的性能产生非常负面的影响，因此kubernetes要求每个节点都要禁用swap设备，但是如果因为某些原因确实不能关闭swap分区，就需要在集群安装过程中通过明确的参数进行配置说明
 
@@ -246,7 +246,7 @@ vim /etc/fstab
 # /dev/mapper/centos-swap swap
 ```
 
-##### 2.6.7 修改linux的内核参数
+##### 2.6.7 修改linux的内核参数(三台都做)
 
 ```powershell
 # 修改linux的内核采纳数，添加网桥过滤和地址转发功能
@@ -263,7 +263,7 @@ net.ipv4.ip_forward = 1
 [root@master ~]# lsmod | grep br_netfilter
 ```
 
-##### 2.6.8 配置ipvs功能
+##### 2.6.8 配置ipvs功能(三台都做)
 
 在Kubernetes中Service有两种带来模型，一种是基于iptables的，一种是基于ipvs的两者比较的话，ipvs的性能明显要高一些，但是如果要使用它，需要手动载入ipvs模块
 
@@ -287,9 +287,22 @@ EOF
 [root@master ~]# lsmod | grep -e ip_vs -e nf_conntrack_ipv4
 ```
 
-##### 2.6.9 安装docker
+##### 2.6.9 安装docker(三台都做)
 
 ```powershell
+# 0、移除以前的包
+yum list installed | grep docker   查看安装的包   
+sudo yum remove docker*
+或
+sudo yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-engine
+                  
 # 1、切换镜像源
 [root@master ~]# wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
 
@@ -309,13 +322,18 @@ EOF
 	"registry-mirrors": ["https://kn0t2bca.mirror.aliyuncs.com"]
 }
 EOF
+注意：如果没有daemon.json，启动docker时会报错 unable to configure the Docker daemon with file /etc/docker/daemon.json  
 
 # 5、启动dokcer
-[root@master ~]# systemctl restart docker
-[root@master ~]# systemctl enable docker
+[root@master ~]# systemctl enable docker --now  #	启动&开机启动docker  
+常用命令：  
+systemctl start docker  
+systemctl status docker  
+systemctl restart docker  
+systemctl stop docker  
 ```
 
-##### 2.6.10 安装Kubernetes组件
+##### 2.6.10 安装Kubernetes组件(三台都做)
 
 ```powershell
 # 1、由于kubernetes的镜像在国外，速度比较慢，这里切换成国内的镜像源
@@ -341,7 +359,7 @@ KUBE_PROXY_MODE="ipvs"
 [root@master ~]# systemctl enable kubelet
 ```
 
-##### 2.6.11 准备集群镜像
+##### 2.6.11 准备集群镜像(三台都做)
 
 ```powershell
 # 在安装kubernetes集群之前，必须要提前准备好集群需要的镜像，所需镜像可以通过下面命令查看
@@ -349,7 +367,7 @@ KUBE_PROXY_MODE="ipvs"
 
 # 下载镜像
 # 此镜像kubernetes的仓库中，由于网络原因，无法连接，下面提供了一种替换方案
-images=(
+[root@master ~]# images=(
 	kube-apiserver:v1.17.4
 	kube-controller-manager:v1.17.4
 	kube-scheduler:v1.17.4
@@ -359,7 +377,8 @@ images=(
 	coredns:1.6.5
 )
 
-for imageName in ${images[@]};do
+注意：必须保证docker正常启动才可执行下面命令： 
+[root@master ~]# for imageName in ${images[@]};do
 	docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
 	docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName k8s.gcr.io/$imageName
 	docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName 
@@ -374,22 +393,23 @@ done
 ```powershell
 # 创建集群
 [root@master ~]# kubeadm init \
-	--apiserver-advertise-address=192.168.90.100 \
-	--image-repository registry.aliyuncs.com/google_containers \
 	--kubernetes-version=v1.17.4 \
 	--service-cidr=10.96.0.0/12 \
-	--pod-network-cidr=10.244.0.0/16
+	--pod-network-cidr=10.244.0.0/16 \
+	--apiserver-advertise-address=192.168.90.100    #master节点的ip地址
+注意：
+（1）可选加上 --image-repository registry.aliyuncs.com/google_containers \  
+（2）执行完上面命令，需要根据自己操作台指示，执行下面命令：
 # 创建必要文件
 [root@master ~]# mkdir -p $HOME/.kube
 [root@master ~]# sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 [root@master ~]# sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
-> 下面的操作只需要在node节点上执行即可
-
+> 下面的操作只需要在node节点上执行即可  
+需要根据自己操作台指示，执行下面命令：
 ```powershell
-kubeadm join 192.168.0.100:6443 --token awk15p.t6bamck54w69u4s8 \
-    --discovery-token-ca-cert-hash sha256:a94fa09562466d32d29523ab6cff122186f1127599fa4dcd5fa0152694f17117 
+kubeadm join *****根据自己操作台指示执行****** 27599fa4dcd5fa0152694f17117 
 ```
 
 在master上查看节点信息
@@ -404,20 +424,20 @@ node2   NotReady   <none>  19s   v1.17.4
 
 ##### 2.6.13 安装网络插件，只在master节点操作即可
 
-```powershell
-wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-```
-
-由于外网不好访问，如果出现无法访问的情况，可以直接用下面的 记得文件名是kube-flannel.yml，位置：/root/kube-flannel.yml内容：
-
+可以直接用下面的 记得文件名是kube-flannel.yml，位置：/root/kube-flannel.yml内容：
 ```powershell
 https://github.com/flannel-io/flannel/tree/master/Documentation/kube-flannel.yml
 ```
-也可手动拉取指定版本
+也可以手动拉取指定版本
 docker pull quay.io/coreos/flannel:v0.14.0              #拉取flannel网络，三台主机
-docker images                  #查看仓库是否拉去下来
+docker images                  #查看仓库是否拉去下来  
 
-```个人笔记```
+**更推荐用本项目根目录下的kube-flannel.yml，应用kube-flannel.yml**  
+```powershell
+[root@master ~]# kubectl apply -f kube-flannel.yml
+```
+
+```个人笔记```  
 若是集群状态一直是 notready,用下面语句查看原因，
 journalctl -f -u kubelet.service
 若原因是： cni.go:237] Unable to update cni config: no networks found in /etc/cni/net.d
@@ -439,7 +459,7 @@ vim /etc/cni/net.d/10-flannel.conf         #编写配置文件
 ```
 
 
-##### 2.6.14 使用kubeadm reset重置集群
+##### 2.6.14 使用kubeadm reset重置集群（选做）
 
 ```
 #在master节点之外的节点进行操作
@@ -460,7 +480,7 @@ systemctl restart kubelet
 systemctl restart docker
 ```
 
-##### 2.6.15 重启kubelet和docker
+##### 2.6.15 重启kubelet和docker（选做）
 
 ```powershell
 # 重启kubelet
@@ -479,7 +499,7 @@ kubectl apply -f kube-flannel.yml
 
 ![img](images/2232696-20210621233106024-1676033717.png)
 
-##### 2.6.16 kubeadm中的命令
+##### 2.6.16 kubeadm中的命令（选做）
 
 ```powershell
 # 生成 新的token
