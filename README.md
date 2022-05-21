@@ -166,7 +166,7 @@ kubeadm 是官方社区推出的一个用于快速部署kubernetes 集群的工�
 - 部署Dashboard Web 页面，可视化查看Kubernetes 资源
 
 #### 2.5 准备环境
-
+VM安装虚拟机：https://blog.csdn.net/qq_45743985/article/details/121152504  
  
 
 ![image-20210609000002940](Kubenetes.assets/image-20210609000002940.png)
@@ -209,6 +209,9 @@ kubernetes要求集群中的节点时间必须精确一直，这里使用chronyd
 [root@master ~]# systemctl start chronyd
 [root@master ~]# systemctl enable chronyd
 [root@master ~]# date
+
+# 若报错chronyd未安装，可以执行下面命令安装
+ yum -y install chrony
 ```
 
 ##### 2.6.4  禁用iptable和firewalld服务(三台都做)
@@ -244,6 +247,9 @@ swap分区指的是虚拟内存分区，它的作用是物理内存使用完，�
 vim /etc/fstab
 注释掉 /dev/mapper/centos-swap swap
 # /dev/mapper/centos-swap swap
+
+# 查看swap都为0是禁用成功
+free -m 
 ```
 
 ##### 2.6.7 修改linux的内核参数(三台都做)
@@ -336,16 +342,16 @@ systemctl stop docker
 ##### 2.6.10 安装Kubernetes组件(三台都做)
 
 ```powershell
-# 1、由于kubernetes的镜像在国外，速度比较慢，这里切换成国内的镜像源
-# 2、编辑/etc/yum.repos.d/kubernetes.repo,添加下面的配置
+# 1、由于kubernetes的镜像在国外，速度比较慢，这里切换成国内的镜像源			
+cat > /etc/yum.repos.d/kubernetes.repo << EOF
 [kubernetes]
 name=Kubernetes
-baseurl=http://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
 enabled=1
-gpgchech=0
+gpgcheck=0
 repo_gpgcheck=0
-gpgkey=http://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
-			http://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+EOF
 
 # 3、安装kubeadm、kubelet和kubectl
 [root@master ~]# yum install --setopt=obsoletes=0 kubeadm-1.17.4-0 kubelet-1.17.4-0 kubectl-1.17.4-0 -y
