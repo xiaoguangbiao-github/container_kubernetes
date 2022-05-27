@@ -430,18 +430,19 @@ node2   NotReady   <none>  19s   v1.17.4
 
 ##### 2.6.13 安装网络插件，只在master节点操作即可
 
-可以直接用下面的 记得文件名是kube-flannel.yml，位置：/root/kube-flannel.yml内容：
+可以直接用下面：
 ```powershell
 https://github.com/flannel-io/flannel/tree/master/Documentation/kube-flannel.yml
 ```
 也可以手动拉取指定版本
-docker pull quay.io/coreos/flannel:v0.14.0              #拉取flannel网络，三台主机
-docker images                  #查看仓库是否拉去下来  
+docker pull quay.io/coreos/flannel:v0.14.0              #拉取flannel网络， 
+三台主机docker images                  #查看仓库是否拉去下来  
 
 **更推荐用本项目根目录下的kube-flannel.yml，应用kube-flannel.yml**  
 ```powershell
 [root@master ~]# kubectl apply -f kube-flannel.yml
-```
+```  
+三台主机docker images                  #查看仓库是否拉去下来  
 
 ```个人笔记```  
 若是集群状态一直是 notready,用下面语句查看原因，
@@ -5043,7 +5044,7 @@ NFS是一个网络文件存储系统，可以搭建一台NFS服务器，然后�
 [root@nfs ~]# mkdir /root/data/nfs -pv
 
 # 将共享目录以读写权限暴露给192.168.5.0/24网段中的所有主机
-[root@nfs ~]# vim /etc/exports
+[root@nfs ~]# vim /etc/exports  # 写入：/root/data/nfs     192.168.5.0/24(rw,no_root_squash)  	    
 [root@nfs ~]# more /etc/exports
 /root/data/nfs     192.168.5.0/24(rw,no_root_squash)
 
@@ -5194,8 +5195,13 @@ PV 的关键配置参数说明：
 ```shell
 # 创建目录
 [root@nfs ~]# mkdir /root/data/{pv1,pv2,pv3} -pv
-
-# 暴露服务
+[root@nfs ~]# vim /etc/exports  
+# 写入： 
+/root/data/pv1     192.168.5.0/24(rw,no_root_squash)  
+/root/data/pv2     192.168.5.0/24(rw,no_root_squash)  
+/root/data/pv3     192.168.5.0/24(rw,no_root_squash)  
+	    
+# 暴露服务  
 [root@nfs ~]# more /etc/exports
 /root/data/pv1     192.168.5.0/24(rw,no_root_squash)
 /root/data/pv2     192.168.5.0/24(rw,no_root_squash)
