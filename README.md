@@ -4641,14 +4641,13 @@ Ingress（以Nginx为例）的工作原理如下：
 [root@k8s-master01 ~]# cd ingress-controller/
 
 # 获取ingress-nginx，本次案例使用的是0.30版本
-[root@k8s-master01 ingress-controller]# wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/mandatory.yaml
-[root@k8s-master01 ingress-controller]# wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/provider/baremetal/service-nodeport.yaml
+[root@k8s-master01 ingress-controller]# wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.47.0/deploy/static/provider/baremetal/deploy.yaml
 
-# 修改mandatory.yaml文件中的仓库
+
+# 修改deploy.yaml文件中的image仓库
 # 修改quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.30.0
-# 为quay-mirror.qiniu.com/kubernetes-ingress-controller/nginx-ingress-controller:0.30.0
-# 创建ingress-nginx
-[root@k8s-master01 ingress-controller]# kubectl apply -f ./
+# 为registry.cn-hangzhou.aliyuncs.com/lfy_k8s_images/ingress-nginx-controller:v0.46.0
+[root@k8s-master01 ingress-controller]# kubectl apply -f deploy.yaml
 
 # 查看ingress-nginx
 [root@k8s-master01 ingress-controller]# kubectl get pod -n ingress-nginx
@@ -4660,6 +4659,7 @@ pod/nginx-ingress-controller-fbf967dd5-4qpbp   1/1     Running   0          12h
 NAME            TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)                      AGE
 ingress-nginx   NodePort   10.98.75.163   <none>        80:32240/TCP,443:31335/TCP   11h
 ```
+如果ingress无法访问：k8s ingress-nginx网络无法访问到容器问题 https://www.jianshu.com/p/4e1a97577e33  
 
 ##### 7.5.2 准备service和pod
 
