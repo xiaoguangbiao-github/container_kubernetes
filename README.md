@@ -188,8 +188,15 @@ Centos Linux 7.5.1804 (Core)
 ```
 
 ##### 2.6.2 主机名解析(三台都做)
+（1）各个机器设置自己的域名
 
-为了方便集群节点间的直接调用，在这个配置一下主机名解析，企业中推荐使用内部DNS服务器
+```powershell
+hostnamectl set-hostname master
+hostnamectl set-hostname node1
+hostnamectl set-hostname node2
+```
+
+（2）为了方便集群节点间的直接调用，在这个配置一下主机名解析，企业中推荐使用内部DNS服务器
 
 ```powershell
 # 主机名成解析 编辑三台服务器的/etc/hosts文件，添加下面内容
@@ -220,11 +227,9 @@ kubernetes和docker 在运行的中会产生大量的iptables规则，为了不�
 
 ```powershell
 # 1 关闭firewalld服务
-[root@master ~]# systemctl stop firewalld
-[root@master ~]# systemctl disable firewalld
+[root@master ~]# systemctl stop firewalld && systemctl disable firewalld
 # 2 关闭iptables服务
-[root@master ~]# systemctl stop iptables
-[root@master ~]# systemctl disable iptables
+[root@master ~]# systemctl stop iptables && systemctl disable iptables
 ```
 
 ##### 2.6.5 禁用selinux(三台都做)
@@ -232,7 +237,7 @@ kubernetes和docker 在运行的中会产生大量的iptables规则，为了不�
 selinux是linux系统下的一个安全服务，如果不关闭它，在安装集群中会产生各种各样的奇葩问题
 
 ```powershell
-# 编辑 /etc/selinux/config 文件，修改SELINUX的值为disable
+# vim /etc/selinux/config 文件，修改SELINUX的值为disable
 # 注意修改完毕之后需要重启linux服务
 SELINUX=disabled
 ```
@@ -256,7 +261,7 @@ free -m
 
 ```powershell
 # 修改linux的内核采纳数，添加网桥过滤和地址转发功能
-# 编辑/etc/sysctl.d/kubernetes.conf文件，添加如下配置：
+# vim /etc/sysctl.d/kubernetes.conf文件，添加如下配置：
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 net.ipv4.ip_forward = 1
@@ -277,7 +282,8 @@ net.ipv4.ip_forward = 1
 # 1.安装ipset和ipvsadm
 [root@master ~]# yum install ipset ipvsadm -y
 # 2.添加需要加载的模块写入脚本文件
-[root@master ~]# cat <<EOF> /etc/sysconfig/modules/ipvs.modules
+[root@master ~]# 
+cat <<EOF> /etc/sysconfig/modules/ipvs.modules
 #!/bin/bash
 modprobe -- ip_vs
 modprobe -- ip_vs_rr
@@ -285,12 +291,8 @@ modprobe -- ip_vs_wrr
 modprobe -- ip_vs_sh
 modprobe -- nf_conntrack_ipv4
 EOF
-# 3.为脚本添加执行权限
-[root@master ~]# chmod +x /etc/sysconfig/modules/ipvs.modules
-# 4.执行脚本文件
-[root@master ~]# /bin/bash /etc/sysconfig/modules/ipvs.modules
-# 5.查看对应的模块是否加载成功
-[root@master ~]# lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+# 3.为脚本添加执行权限    执行脚本文件 查  看对应的模块是否加载成功
+[root@master ~]# chmod +x /etc/sysconfig/modules/ipvs.modules && /bin/bash /etc/sysconfig/modules/ipvs.modules && lsmod | grep -e ip_vs -e nf_conntrack_ipv4
 ```
 
 ##### 2.6.9 安装docker(三台都做)
