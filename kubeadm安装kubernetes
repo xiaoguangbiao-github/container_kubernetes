@@ -1,0 +1,310 @@
+## kubeadm安装kubernetes
+
+#### 1 kubeadm 部署方式介绍
+
+kubeadm 是官方社区推出的一个用于快速部署kubernetes 集群的工具，这个工具能通过两条指令完成一个kubernetes 集群的部署：
+
+- 创建一个Master 节点kubeadm init
+- 将Node 节点加入到当前集群中$ kubeadm join <Master 节点的IP 和端口>
+
+#### 2 安装要求
+
+在开始之前，部署Kubernetes 集群机器需要满足以下几个条件：
+
+- 一台或多台机器，操作系统CentOS7.x-86_x64
+- 硬件配置：2GB 或更多RAM，2 个CPU 或更多CPU，硬盘30GB 或更多
+- 集群中所有机器之间网络互通
+- 可以访问外网，需要拉取镜像
+- 禁止swap 分区
+
+#### 3 最终目标
+
+- 在所有节点上安装Docker 和kubeadm
+- 部署Kubernetes Master
+- 部署容器网络插件
+- 部署Kubernetes Node，将节点加入Kubernetes 集群中
+- 部署Dashboard Web 页面，可视化查看Kubernetes 资源
+
+#### 4 准备环境
+VM安装虚拟机：https://blog.csdn.net/qq_45743985/article/details/121152504  
+ 
+
+![image-20210609000002940](Kubenetes.assets/image-20210609000002940.png)
+
+| 角色     | IP地址      | 组件                              |
+| :------- | :---------- | :-------------------------------- |
+| master01 | 192.168.5.3 | docker，kubectl，kubeadm，kubelet |
+| node01   | 192.168.5.4 | docker，kubectl，kubeadm，kubelet |
+| node02   | 192.168.5.5 | docker，kubectl，kubeadm，kubelet |
+
+#### 5 环境初始化
+
+##### 5.1 检查操作系统的版本(三台都做)
+
+```powershell
+# 此方式下安装kubernetes集群要求Centos版本要在7.5或之上
+[root@master ~]# cat /etc/redhat-release
+Centos Linux 7.5.1804 (Core)
+```
+
+##### 5.2 主机名解析(三台都做)
+（1）各个机器设分别置自己的域名
+
+```powershell
+hostnamectl set-hostname master
+hostnamectl set-hostname node1
+hostnamectl set-hostname node2
+```
+
+（2）为了方便集群节点间的直接调用，在这个配置一下主机名解析，企业中推荐使用内部DNS服务器
+
+```powershell
+# 主机名成解析 编辑三台服务器的/etc/hosts文件，添加下面内容
+192.168.90.100 master
+192.168.90.106 node1
+192.168.90.107 node2
+```
+
+##### 5.3 时间同步(三台都做)
+
+kubernetes要求集群中的节点时间必须精确一直，这里使用chronyd服务从网络同步时间
+
+企业中建议配置内部的会见同步服务器
+
+```powershell
+# 启动chronyd服务
+[root@master ~]# systemctl start chronyd
+[root@master ~]# systemctl enable chronyd
+[root@master ~]# date
+
+# 若报错chronyd未安装，可以执行下面命令安装
+ yum -y install chrony
+```
+
+##### 5.4  禁用iptable和firewalld服务(三台都做)
+
+kubernetes和docker 在运行的中会产生大量的iptables规则，为了不让系统规则跟它们混淆，直接关闭系统的规则
+
+```powershell
+# 1 关闭firewalld服务
+[root@master ~]# systemctl stop firewalld && systemctl disable firewalld
+# 2 关闭iptables服务
+[root@master ~]# systemctl stop iptables && systemctl disable iptables
+```
+
+##### 5.5 禁用selinux(三台都做)
+
+selinux是linux系统下的一个安全服务，如果不关闭它，在安装集群中会产生各种各样的奇葩问题
+
+```powershell
+# vim /etc/selinux/config 文件，修改SELINUX的值为disable
+# 注意修改完毕之后需要重启linux服务
+SELINUX=disabled
+```
+
+##### 5.6 禁用swap分区(三台都做)
+
+swap分区指的是虚拟内存分区，它的作用是物理内存使用完，之后将磁盘空间虚拟成内存来使用，启用swap设备会对系统的性能产生非常负面的影响，因此kubernetes要求每个节点都要禁用swap设备，但是如果因为某些原因确实不能关闭swap分区，就需要在集群安装过程中通过明确的参数进行配置说明
+
+```powershell
+# 编辑分区配置文件/etc/fstab，注释掉swap分区一行
+swapoff -a  
+sed -ri 's/.*swap.*/#&/' /etc/fstab
+
+# 查看swap都为0是禁用成功
+free -m 
+```
+
+##### 5.7 允许 iptables 检查桥接流量(三台都做)
+
+```powershell
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+br_netfilter
+EOF
+
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sudo sysctl --system
+```
+
+##### 5.8 安装docker(三台都做)
+
+```powershell
+###### 0、移除以前的包
+yum list installed | grep docker   查看安装的包   
+sudo yum remove docker*
+或
+sudo yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-engine
+                  
+###### 1、切换镜像源
+[root@master ~]# wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
+
+###### 2、查看当前镜像源中支持的docker版本
+[root@master ~]# yum list docker-ce --showduplicates
+
+###### 3、安装特定版本的docker-ce
+# 必须制定--setopt=obsoletes=0，否则yum会自动安装更高版本
+[root@master ~]# yum install --setopt=obsoletes=0 docker-ce-18.06.3.ce-3.el7 -y
+
+###### 4、添加一个配置文件
+#Docker 在默认情况下使用Vgroup Driver为cgroupfs，而Kubernetes推荐使用systemd来替代cgroupfs
+[root@master ~]# mkdir /etc/docker
+[root@master ~]# cat <<EOF> /etc/docker/daemon.json
+{
+	"exec-opts": ["native.cgroupdriver=systemd"],
+	"registry-mirrors": ["https://kn0t2bca.mirror.aliyuncs.com"]
+}
+EOF
+注意：如果没有daemon.json，启动docker时会报错 unable to configure the Docker daemon with file /etc/docker/daemon.json  
+
+###### 5、启动dokcer
+[root@master ~]# systemctl enable docker --now  #	启动&开机启动docker  
+常用命令：  
+systemctl start docker  
+systemctl status docker  
+systemctl restart docker  
+systemctl stop docker  
+```
+
+##### 5.9 安装kubelet、kubeadm、kubectl(三台都做)
+
+```powershell
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=http://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+gpgkey=http://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+   http://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+
+sudo yum install -y kubelet-1.20.9 kubeadm-1.20.9 kubectl-1.20.9 --disableexcludes=kubernetes
+
+sudo systemctl enable --now kubelet		
+```
+
+##### 5.10 准备集群镜像(三台都做)
+###### （1）下载各个机器需要的镜像
+
+```powershell
+sudo tee ./images.sh <<-'EOF'
+#!/bin/bash
+images=(
+kube-apiserver:v1.20.9
+kube-proxy:v1.20.9
+kube-controller-manager:v1.20.9
+kube-scheduler:v1.20.9
+coredns:1.7.0
+etcd:3.4.13-0
+pause:3.2
+)
+for imageName in ${images[@]} ; do
+docker pull registry.cn-hangzhou.aliyuncs.com/lfy_k8s_images/$imageName
+done
+EOF
+   
+chmod +x ./images.sh && ./images.sh
+```
+###### （2）初始化主节点
+
+```powershell
+#所有机器添加master域名映射，以下需要修改为自己的
+echo "172.31.0.4  cluster-endpoint" >> /etc/hosts
+
+
+
+#主节点初始化
+kubeadm init \
+--apiserver-advertise-address=172.31.0.4 \
+--control-plane-endpoint=cluster-endpoint \
+--image-repository registry.cn-hangzhou.aliyuncs.com/lfy_k8s_images \
+--kubernetes-version v1.20.9 \
+--service-cidr=10.96.0.0/16 \
+--pod-network-cidr=192.168.0.0/16
+```
+
+```powershell
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+You can now join any number of control-plane nodes by copying certificate authorities
+and service account keys on each node and then running the following as root:
+
+  kubeadm join cluster-endpoint:6443 --token hums8f.vyx71prsg74ofce7 \
+    --discovery-token-ca-cert-hash sha256:a394d059dd51d68bb007a532a037d0a477131480ae95f75840c461e85e2c6ae3 \
+    --control-plane 
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join cluster-endpoint:6443 --token hums8f.vyx71prsg74ofce7 \
+    --discovery-token-ca-cert-hash sha256:a394d059dd51d68bb007a532a037d0a477131480ae95f75840c461e85e2c6ae3
+```
+
+###### （3）设置.kube/config
+
+```powershell
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+
+###### （4）安装网络组件
+
+```powershell
+curl https://docs.projectcalico.org/manifests/calico.yaml -O
+
+kubectl apply -f calico.yaml
+```
+
+###### （5）加入node节点
+
+```powershell
+kubeadm join cluster-endpoint:6443 --token x5g4uy.wpjjdbgra92s25pp \
+	--discovery-token-ca-cert-hash sha256:6255797916eaee52bf9dda9429db616fcd828436708345a308f4b917d3457a22
+```
+
+###### （6）验证集群
+
+```powershell
+  kubectl get nodes
+```
+
+#### 2.7 集群测试
+
+##### 2.7.1 创建一个nginx服务
+
+```powershell
+kubectl create deployment nginx  --image=nginx:1.14-alpine
+```
+
+##### 2.7.2 暴露端口
+
+```powershell
+kubectl expose deploy nginx  --port=80 --target-port=80  --type=NodePort
+```
