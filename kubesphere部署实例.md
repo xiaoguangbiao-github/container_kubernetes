@@ -80,7 +80,18 @@ https://nacos.io/zh-cn/docs/v2/guide/admin/cluster-mode-quick-start.html
 #### 1.6.2、部署无状态微服务
 ###### （1）编写DockerFile
 ###### （2）打镜像tag
-###### （3）推送到阿里云镜像仓库
+```powershell
+docker build -t ***:v1.0 -f DockerFile .
+```
+###### （3）重命名镜像tag
+```powershell
+docker tag 461955fe1e57 registry.cn-shenzhen.aliyuncs.com/lfy_ruoyi/ruoyi-visual-monitor:v1
+```
+###### （4）推送到阿里云镜像仓库
+```powershell
+docker push registry.cn-shenzhen.aliyuncs.com/ruoyi-xgb/ruoyi-visual-monitor:v1
+```
+
 ###### （4）部署应用
 
 #### 1.6.3、部署网络
