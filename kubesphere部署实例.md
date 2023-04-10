@@ -62,12 +62,28 @@ https://nacos.io/zh-cn/docs/v2/guide/admin/deployment.html
 
 ##### 1.5.4、微服务注册nacos
 ###### （1）mysql中初始化sql
-###### （2）修改nacos上的mysql,redis配置
+###### （2）重启nacos并修改nacos上的微服务配置文件中的mysql,redis
 ###### （3）启动微服务，注册nacos
 
-#### 1.6、kubesphere部署RuoYi-Cloud
-##### 1.6.1、部署有状态中间件
-##### 1.6.2、部署无状态微服务
-##### 1.6.3、部署网络
-##### 1.6.4、部署配置
+##### 1.5.5、启动前端vue
+###### （1）部署node.js
+###### （2）安装依赖
+###### （3）启动前端vue
+
+### 1.6、kubesphere部署RuoYi-Cloud
+#### 1.6.1、部署有状态中间件
+###### （1）部署mysql
+###### （2）部署redis
+###### （3）部署nacos
+https://nacos.io/zh-cn/docs/v2/guide/admin/cluster-mode-quick-start.html
+
+#### 1.6.2、部署无状态微服务
+###### （1）编写DockerFile
+###### （2）打镜像tag
+###### （3）推送到阿里云镜像仓库
+###### （4）部署应用
+
+#### 1.6.3、部署网络
+#### 1.6.4、部署配置
+
 
