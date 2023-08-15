@@ -3884,7 +3884,7 @@ nginx-7df9756ccc-sl9c6   1/1     Terminating         0          6m50s
 
 DaemonSet类型的控制器可以保证在集群中的每一台（或指定）节点上都运行一个副本。一般适用于日志收集、节点监控等场景。也就是说，如果一个Pod提供的功能是节点级别的（每个节点都需要且只需要一个），那么这类Pod就适合使用DaemonSet类型的控制器创建。
 
-![img](Kubenetes.assets/image-20200612010223537.png)
+![image-20200612010223537](Kubenetes.assets/image-20200612010223537.png)
 
 DaemonSet控制器的特点：
 
@@ -3974,7 +3974,7 @@ Job，主要用于负责**批量处理(一次要处理指定数量任务)**短�
 - 当Job创建的pod执行成功结束时，Job将记录成功结束的pod数量
 - 当成功结束的pod达到指定的数量时，Job将完成执行
 
-![img](Kubenetes.assets/image-20200618213054113.png)
+![image-20200618213054113](Kubenetes.assets/image-20200618213054113.png)
 
 Job的资源清单文件：
 
@@ -4097,7 +4097,7 @@ job.batch "pc-job" deleted
 
 CronJob控制器以 Job控制器资源为其管控对象，并借助它管理pod资源对象，Job控制器定义的作业任务在其控制器资源创建之后便会立即执行，但CronJob可以以类似于Linux操作系统的周期性任务作业计划的方式控制其运行**时间点**及**重复运行**的方式。也就是说，**CronJob可以在特定的时间点(反复的)去运行job任务**。
 
-![img](Kubenetes.assets/image-20200618213149531.png)
+![image-20200618213149531](Kubenetes.assets/image-20200618213149531.png)
 
 CronJob的资源清单文件：
 
